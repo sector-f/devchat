@@ -72,6 +72,8 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		return nil, err
 	}
 
+	term.SetPrompt(u.name + ": ")
+
 	go func() {
 		for u.win = range winChan {
 		}
