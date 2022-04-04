@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	systemUsername = green.Paint("devbot")
+	systemUsername = green.Paint("SYSTEM")
 )
 
 type server struct {
@@ -106,7 +106,7 @@ func (s *server) broadcast(sender, msg string) {
 	msg = strings.Join(splitMsg, " ")
 
 	for _, u := range s.users {
-		u.writeln(sender, msg)
+		s.writeln(u, sender, msg)
 	}
 
 	s.backlog = append(s.backlog, backlogMessage{rcvTime, sender, msg + "\n"})

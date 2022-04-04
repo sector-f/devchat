@@ -67,7 +67,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 
 	err := s.setUsername(u, sess.User())
 	if err != nil {
-		u.writeln(systemUsername, "Error setting name:"+err.Error())
+		s.writeln(u, systemUsername, "Error setting name:"+err.Error())
 		sess.Close()
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 
 	if s.bans.contains(u.id) {
 		s.logger.Printf("Rejected %s [%s]\n", u.name, host)
-		u.writeln(systemUsername, "You are banned")
+		s.writeln(u, systemUsername, "You are banned")
 		s.removeUserQuietly(u)
 		return nil, errors.New("user is banned")
 	}
@@ -105,7 +105,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 				lastStamp = msg.timestamp
 				u.rWriteln(printPrettyDuration(u.joinTime.Sub(lastStamp)) + " earlier")
 			}
-			u.writeln(msg.senderName, msg.text)
+			s.writeln(u, msg.senderName, msg.text)
 		}
 	}
 
@@ -159,7 +159,17 @@ func (s *server) repl(u *user) {
 	}
 }
 
-func (u *user) writeln(sender, msg string) {}
+func (s *server) writeln(u *user, sender, msg string) {
+	msg = sender + ": " + msg
+	if !u.bell {
+		msg = strings.ReplaceAll(msg, "\a", "")
+	}
+
+	_, err := u.term.Write([]byte(msg + "\n"))
+	if err != nil {
+		s.removeUser(u, u.name+"has left the chat because of an error writing to their terminal: "+err.Error())
+	}
+}
 
 func (u *user) rWriteln(msg string) {}
 
