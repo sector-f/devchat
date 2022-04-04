@@ -72,17 +72,6 @@ func (s *server) run() error {
 		u.repl()
 	})
 
-	// TODO: decide if this functionality is actually necessary/desired
-	if s.conf.port == 22 {
-		fmt.Println("Also starting chat server on port 443")
-		go func() {
-			err := ssh.ListenAndServe(":443", nil, ssh.HostKeyFile(os.Getenv("HOME")+"/.ssh/id_rsa"))
-			if err != nil {
-				s.logger.Println(err)
-			}
-		}()
-	}
-
 	return ssh.ListenAndServe(
 		fmt.Sprintf(":%d", s.conf.port),
 		nil,

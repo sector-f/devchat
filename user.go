@@ -42,7 +42,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 	host, _, _ := net.SplitHostPort(sess.RemoteAddr().String()) // definitely should not give an err
 
 	pubkey := sess.PublicKey()
-	if pubkey != nil { // TODO: figure out if this can actually occur
+	if pubkey == nil { // TODO: figure out if this can actually occur
 		return nil, errors.New("public key was nil")
 	}
 
@@ -143,6 +143,11 @@ func (u *user) rWriteln(msg string) {}
 func (u *user) closeQuietly() {}
 
 func (u *user) pickUsernameQuietly(name string) error { return errors.New("Unimplemented") }
+
+// TODO: add color to this eventually?
+func (u *user) formatPronouns() string {
+	return strings.Join(u.pronouns, "/")
+}
 
 func shasum(s string) string {
 	h := sha256.Sum256([]byte(s))
