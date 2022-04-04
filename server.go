@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -123,9 +122,16 @@ func (s *server) addUser(u *user) {
 	s.users = append(s.users, u)
 }
 
-func (s *server) removeUser(u *user) error {
+func (s *server) removeUser(u *user, msg string) {
+	s.broadcast(systemUsername, msg)
+	s.removeUserQuietly(u)
+}
+
+func (s *server) removeUserQuietly(u *user) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	u.session.Close()
 
 	var (
 		index int  = 0
@@ -141,7 +147,7 @@ func (s *server) removeUser(u *user) error {
 	}
 
 	if !found {
-		return errors.New("user does not exist")
+		return
 	}
 
 	// Replace user that we are removing with the last user in the slice,
@@ -149,7 +155,7 @@ func (s *server) removeUser(u *user) error {
 	s.users[index] = s.users[len(s.users)-1]
 	s.users = s.users[:len(s.users)-1]
 
-	return nil
+	return
 }
 
 type backlogMessage struct {

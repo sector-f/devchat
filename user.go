@@ -4,10 +4,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"io"
+	"math"
 	"net"
 	"strings"
 	"time"
+	"unicode"
 
+	"github.com/acarl005/stripansi"
 	"github.com/gliderlabs/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/term"
@@ -76,7 +80,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 	if s.bans.contains(u.id) {
 		s.logger.Printf("Rejected %s [%s]\n", u.name, host)
 		u.writeln(systemUsername, "You are banned")
-		u.closeQuietly()
+		s.removeUserQuietly(u)
 		return nil, errors.New("user is banned")
 	}
 
@@ -120,13 +124,44 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 	return u, nil
 }
 
-func (s *server) repl(u *user) {}
+// TODO: figure out which file this should be in
+func (s *server) repl(u *user) {
+	for {
+		line, err := u.term.ReadLine()
+		switch err {
+		case io.EOF:
+			s.removeUser(u, u.name+" has left the chat")
+			return
+		case nil:
+			// Do nothing
+		default:
+			s.removeUser(u, u.name+" has left the chat due to an error: "+err.Error())
+			return
+		}
+		line += "\n"
+
+		// Limit message length as early as possible
+		// TODO: see if splitting into multiple messages is possible (and a good idea)
+		if len(line) > maxMsgLen {
+			line = line[0:maxMsgLen]
+		}
+
+		line = strings.TrimRightFunc(line, unicode.IsSpace)
+		u.term.SetPrompt(u.name + ": ")
+		u.term.Write([]byte(strings.Repeat("\033[A\033[2K", int(math.Ceil(float64(lenString(u.name+line)+2)/(float64(u.win.Width))))))) // basically, ceil(length of line divided by term width)
+
+		if line == "" {
+			continue
+		}
+
+		// TODO: command handling goes here
+		s.broadcast(u.name, line)
+	}
+}
 
 func (u *user) writeln(sender, msg string) {}
 
 func (u *user) rWriteln(msg string) {}
-
-func (u *user) closeQuietly() {}
 
 func (s *server) setUsername(u *user, name string) error {
 	s.mu.Lock()
@@ -165,4 +200,8 @@ func printPrettyDuration(d time.Duration) string {
 		s = "< 1m"
 	}
 	return s
+}
+
+func lenString(a string) int {
+	return len([]rune(stripansi.Strip(a)))
 }
