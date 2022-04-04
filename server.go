@@ -54,36 +54,39 @@ func newServer(c config) (*server, error) {
 }
 
 func (s *server) run() error {
-	ssh.Handle(func(sess ssh.Session) {
-		s.logger.Printf("User %s [%s] connecting from %v\n", sess.User(), shasum(string(sess.PublicKey().Marshal()))[:8], formatAddr(sess.RemoteAddr()))
+	sshServer := ssh.Server{
+		Addr: fmt.Sprintf(":%d", s.conf.port),
+		Handler: func(sess ssh.Session) {
+			s.logger.Printf("User %s [%s] connecting from %v\n", sess.User(), shasum(string(sess.PublicKey().Marshal()))[:8], formatAddr(sess.RemoteAddr()))
 
-		u, err := newUser(s, sess)
-		if err != nil {
-			s.logger.Println(err)
-			return
-		}
-
-		defer func() { // crash protection
-			if i := recover(); i != nil {
-				s.broadcast(systemUsername, "Recovered from panic: "+fmt.Sprint(i)+", stack: "+string(debug.Stack()))
+			u, err := newUser(s, sess)
+			if err != nil {
+				s.logger.Println(err)
+				return
 			}
-		}()
 
-		s.addUser(u)
-		s.repl(u)
-	})
+			defer func() { // crash protection
+				if i := recover(); i != nil {
+					s.broadcast(systemUsername, "Recovered from panic: "+fmt.Sprint(i)+", stack: "+string(debug.Stack()))
+				}
+			}()
 
-	s.logger.Printf("Starting server on port %v\n", s.conf.port)
-	return ssh.ListenAndServe(
-		fmt.Sprintf(":%d", s.conf.port),
-		nil,
-		ssh.HostKeyFile(s.conf.keyFilename),
+			s.addUser(u)
+			s.repl(u)
+		},
+	}
+
+	sshServer.SetOption(ssh.HostKeyFile(s.conf.keyFilename))
+	sshServer.SetOption(
 		ssh.PublicKeyAuth(
 			func(ctx ssh.Context, key ssh.PublicKey) bool {
 				return true // allow all keys, this lets us hash pubkeys later
 			},
 		),
 	)
+
+	s.logger.Printf("Starting server on port %v\n", s.conf.port)
+	return sshServer.ListenAndServe()
 }
 
 func (s *server) broadcast(sender, msg string) {
