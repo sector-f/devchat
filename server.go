@@ -55,9 +55,9 @@ func newServer(c config) (*server, error) {
 }
 
 func (s *server) run() error {
-	// TODO: see if we can create a concrete instance here rather than relying on
-	// package-scoped vars, like ssh.DefaultHandler here
 	ssh.Handle(func(sess ssh.Session) {
+		s.logger.Printf("User %v connecting from %v\n", sess.User(), sess.RemoteAddr())
+
 		u, err := newUser(s, sess)
 		if err != nil {
 			s.logger.Println(err)
@@ -74,10 +74,11 @@ func (s *server) run() error {
 		s.repl(u)
 	})
 
+	s.logger.Printf("Starting server on port %v\n", s.conf.port)
 	return ssh.ListenAndServe(
 		fmt.Sprintf(":%d", s.conf.port),
 		nil,
-		ssh.HostKeyFile(os.Getenv("HOME")+"/.ssh/id_rsa"),
+		ssh.HostKeyFile(s.conf.keyFilename),
 		ssh.PublicKeyAuth(
 			func(ctx ssh.Context, key ssh.PublicKey) bool {
 				return true // allow all keys, this lets us hash pubkeys later
