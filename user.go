@@ -67,7 +67,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 
 	err := s.setUsername(u, sess.User())
 	if err != nil {
-		s.writeln(u, systemUsername, "Error setting name:"+err.Error())
+		s.writeln(u, systemUsername, "Error setting name: "+err.Error())
 		sess.Close()
 		return nil, err
 	}
@@ -181,7 +181,8 @@ func (s *server) setUsername(u *user, name string) error {
 
 	taken := false
 	for _, user := range s.users {
-		if user.name == u.name {
+		if name == user.name {
+			s.logger.Println("It matches")
 			taken = true
 			break
 		}
