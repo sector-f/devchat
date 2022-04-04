@@ -11,7 +11,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/acarl005/stripansi"
 	"github.com/gliderlabs/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/term"
@@ -123,6 +122,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		s.mainRoom.broadcast(systemUsername, u.name+" has joined the chat")
 	*/
 
+	s.broadcast(systemUsername, u.name+" has joined the chat")
 	return u, nil
 }
 
@@ -205,16 +205,4 @@ func (u *user) formatPronouns() string {
 func shasum(s string) string {
 	h := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(h[:])
-}
-
-func printPrettyDuration(d time.Duration) string {
-	s := strings.TrimSpace(strings.TrimSuffix(d.Round(time.Minute).String(), "0s"))
-	if s == "" { // we cut off the seconds so if there's nothing in the string it means it was made of only seconds.
-		s = "< 1m"
-	}
-	return s
-}
-
-func lenString(a string) int {
-	return len([]rune(stripansi.Strip(a)))
 }

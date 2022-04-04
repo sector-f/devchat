@@ -10,7 +10,7 @@ type config struct {
 func defaultConfig() config {
 	c := config{
 		port:        2222,
-		scrollback:  100,
+		scrollback:  16,
 		banFilename: "bans.json",
 		keyFilename: "id_rsa",
 	}

@@ -55,7 +55,7 @@ func newServer(c config) (*server, error) {
 
 func (s *server) run() error {
 	ssh.Handle(func(sess ssh.Session) {
-		s.logger.Printf("User %v connecting from %v\n", sess.User(), sess.RemoteAddr())
+		s.logger.Printf("User %s [%s] connecting from %v\n", sess.User(), shasum(string(sess.PublicKey().Marshal()))[:8], formatAddr(sess.RemoteAddr()))
 
 		u, err := newUser(s, sess)
 		if err != nil {
@@ -109,7 +109,7 @@ func (s *server) broadcast(sender, msg string) {
 		s.writeln(u, sender, msg)
 	}
 
-	s.backlog = append(s.backlog, backlogMessage{rcvTime, sender, msg + "\n"})
+	s.backlog = append(s.backlog, backlogMessage{rcvTime, sender, msg})
 	if len(s.backlog) > s.conf.scrollback {
 		s.backlog = s.backlog[len(s.backlog)-s.conf.scrollback:]
 	}
