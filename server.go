@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -60,15 +61,17 @@ func (s *server) run() error {
 		u, err := newUser(s, sess)
 		if err != nil {
 			s.logger.Println(err)
-			sess.Close()
 			return
 		}
+
 		defer func() { // crash protection
 			if i := recover(); i != nil {
-				s.broadcast(systemUsername, "Slap the developers in the face for me, the server almost crashed, also tell them this: "+fmt.Sprint(i)+", stack: "+string(debug.Stack()))
+				s.broadcast(systemUsername, "Recovered from panic: "+fmt.Sprint(i)+", stack: "+string(debug.Stack()))
 			}
 		}()
-		u.repl()
+
+		s.addUser(u)
+		s.repl(u)
 	})
 
 	return ssh.ListenAndServe(
@@ -110,6 +113,42 @@ func (s *server) broadcast(sender, msg string) {
 	if len(s.backlog) > s.conf.scrollback {
 		s.backlog = s.backlog[len(s.backlog)-s.conf.scrollback:]
 	}
+}
+
+func (s *server) addUser(u *user) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.users = append(s.users, u)
+}
+
+func (s *server) removeUser(u *user) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var (
+		index int  = 0
+		found bool = false
+	)
+
+	for i, user := range s.users {
+		if u == user {
+			index = i
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return errors.New("user does not exist")
+	}
+
+	// Replace user that we are removing with the last user in the slice,
+	// then remove the last item from the slice
+	s.users[index] = s.users[len(s.users)-1]
+	s.users = s.users[:len(s.users)-1]
+
+	return nil
 }
 
 type backlogMessage struct {

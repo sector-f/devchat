@@ -13,9 +13,6 @@ import (
 	"golang.org/x/term"
 )
 
-// Map of SSH key hash to user
-type users map[string]*user
-
 type user struct {
 	name     string
 	pronouns []string
@@ -62,16 +59,23 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		joinTime:      now,
 	}
 
+	clearCMD("", u) // always clear the screen on connect
+
+	err := s.setUsername(u, sess.User())
+	if err != nil {
+		u.writeln(systemUsername, "Error setting name:"+err.Error())
+		sess.Close()
+		return nil, err
+	}
+
 	go func() {
 		for u.win = range winChan {
 		}
 	}()
 
-	s.logger.Printf("Connected %s [%s]\n", u.name, u.id)
-
 	if s.bans.contains(u.id) {
 		s.logger.Printf("Rejected %s [%s]\n", u.name, host)
-		u.writeln(systemUsername, "**You are banned**. If you feel this was a mistake, please reach out at github.com/quackduck/devzat/issues or email igoel.mail@gmail.com. Please include the following information: [ID "+u.id+"]")
+		u.writeln(systemUsername, "You are banned")
 		u.closeQuietly()
 		return nil, errors.New("user is banned")
 	}
@@ -89,8 +93,6 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		}
 	*/
 
-	clearCMD("", u) // always clear the screen on connect
-
 	if len(s.backlog) > 0 {
 		lastStamp := s.backlog[0].timestamp
 		u.rWriteln(printPrettyDuration(u.joinTime.Sub(lastStamp)) + " earlier")
@@ -103,22 +105,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		}
 	}
 
-	if err := u.pickUsernameQuietly(sess.User()); err != nil { // user exited or had some error
-		return nil, err
-	}
-
 	/*
-
-		// TODO: this should probably be a method of room
-		s.mainRoom.usersMutex.Lock()
-		s.mainRoom.users = append(mainRoom.users, u)
-		s.mainRoom.usersMutex.Unlock()
-
-		u.term.SetBracketedPasteMode(true) // experimental paste bracketing support
-		term.AutoCompleteCallback = func(line string, pos int, key rune) (string, int, bool) {
-			return autocompleteCallback(u, line, pos, key)
-		}
-
 		switch len(s.mainRoom.users) - 1 {
 		case 0:
 			u.writeln("", blue.Paint("Welcome to the chat. There are no more users"))
@@ -133,7 +120,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 	return u, nil
 }
 
-func (u *user) repl() {}
+func (s *server) repl(u *user) {}
 
 func (u *user) writeln(sender, msg string) {}
 
@@ -141,7 +128,26 @@ func (u *user) rWriteln(msg string) {}
 
 func (u *user) closeQuietly() {}
 
-func (u *user) pickUsernameQuietly(name string) error { return errors.New("Unimplemented") }
+func (s *server) setUsername(u *user, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	taken := false
+	for _, user := range s.users {
+		if user.name == u.name {
+			taken = true
+			break
+		}
+	}
+
+	if taken {
+		return errors.New("name is already taken")
+	}
+
+	u.name = name
+
+	return nil
+}
 
 // TODO: add color to this eventually?
 func (u *user) formatPronouns() string {
