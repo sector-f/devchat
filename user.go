@@ -31,7 +31,6 @@ type user struct {
 
 	lastTimestamp time.Time
 	joinTime      time.Time
-	room          *room
 }
 
 func newUser(s *server, sess ssh.Session) (*user, error) {
@@ -61,7 +60,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		win:           w,
 		lastTimestamp: now,
 		joinTime:      now,
-		room:          s.mainRoom}
+	}
 
 	go func() {
 		for u.win = range winChan {

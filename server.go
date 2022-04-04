@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,11 +21,10 @@ var (
 )
 
 type server struct {
-	conf     config
-	mainRoom *room
-	rooms    map[string]*room
-	backlog  []backlogMessage
-	bans     *banlist
+	conf    config
+	users   []*user
+	backlog []backlogMessage
+	bans    *banlist
 
 	logger      *log.Logger
 	startupTime time.Time
@@ -39,11 +39,10 @@ func newServer(c config) (*server, error) {
 	}
 
 	s := server{
-		conf:     c,
-		mainRoom: &room{name: "#main"},
-		rooms:    make(map[string]*room),
-		backlog:  []backlogMessage{},
-		bans:     bans,
+		conf:    c,
+		users:   []*user{},
+		backlog: []backlogMessage{},
+		bans:    bans,
 
 		logger:      log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile),
 		startupTime: time.Now(),
@@ -66,7 +65,7 @@ func (s *server) run() error {
 		}
 		defer func() { // crash protection
 			if i := recover(); i != nil {
-				s.mainRoom.broadcast(systemUsername, "Slap the developers in the face for me, the server almost crashed, also tell them this: "+fmt.Sprint(i)+", stack: "+string(debug.Stack()))
+				s.broadcast(systemUsername, "Slap the developers in the face for me, the server almost crashed, also tell them this: "+fmt.Sprint(i)+", stack: "+string(debug.Stack()))
 			}
 		}()
 		u.repl()
@@ -82,6 +81,35 @@ func (s *server) run() error {
 			},
 		),
 	)
+}
+
+func (s *server) broadcast(sender, msg string) {
+	if msg == "" {
+		return
+	}
+
+	rcvTime := time.Now()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	splitMsg := strings.Split(msg, " ")
+	for i := range splitMsg {
+		word := splitMsg[i]
+		if word == "@everyone" {
+			splitMsg[i] = green.Paint("@everyone\a")
+		}
+	}
+	msg = strings.Join(splitMsg, " ")
+
+	for _, u := range s.users {
+		u.writeln(sender, msg)
+	}
+
+	s.backlog = append(s.backlog, backlogMessage{rcvTime, sender, msg + "\n"})
+	if len(s.backlog) > s.conf.scrollback {
+		s.backlog = s.backlog[len(s.backlog)-s.conf.scrollback:]
+	}
 }
 
 type backlogMessage struct {
