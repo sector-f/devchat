@@ -23,6 +23,7 @@ type user struct {
 	session ssh.Session
 	term    *term.Terminal
 	win     ssh.Window
+	backlog []backlogMessage
 
 	bell    bool
 	colorBG string
@@ -31,6 +32,14 @@ type user struct {
 
 	lastTimestamp time.Time
 	joinTime      time.Time
+}
+
+func (u *user) render() {
+	clearCMD("", u)
+	for _, msg := range u.backlog {
+		u.writeln(msg.senderName, msg.text, msg.timestamp.Format(time.Kitchen))
+	}
+	u.term.SetPrompt(u.name + ": ")
 }
 
 func newUser(s *server, sess ssh.Session) (*user, error) {
@@ -49,15 +58,19 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 
 	now := time.Now()
 	u := &user{
-		name:          "",
-		pronouns:      []string{"unset"},
-		session:       sess,
-		term:          term,
-		bell:          true,
-		colorBG:       "bg-off", // the FG will be set randomly
-		id:            shasum(toHash),
-		addr:          host,
-		win:           w,
+		name:     "",
+		pronouns: []string{"unset"},
+
+		session: sess,
+		term:    term,
+		win:     w,
+		backlog: s.backlog,
+
+		bell:    true,
+		colorBG: "bg-off", // the FG will be set randomly
+		id:      shasum(toHash),
+		addr:    host,
+
 		lastTimestamp: now,
 		joinTime:      now,
 	}
@@ -71,10 +84,10 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		return nil, err
 	}
 
-	term.SetPrompt(u.name + ": ")
-
+	u.render()
 	go func() {
 		for u.win = range winChan {
+			u.render()
 		}
 	}()
 
@@ -98,11 +111,13 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		}
 	*/
 
-	if len(s.backlog) > 0 {
-		for _, msg := range s.backlog {
-			u.writeln(msg.senderName, msg.text, msg.timestamp.Format(time.Kitchen))
+	/*
+		if len(s.backlog) > 0 {
+			for _, msg := range s.backlog {
+				u.writeln(msg.senderName, msg.text, msg.timestamp.Format(time.Kitchen))
+			}
 		}
-	}
+	*/
 
 	/*
 		switch len(s.mainRoom.users) - 1 {
