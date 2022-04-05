@@ -96,6 +96,11 @@ func (s *server) run() func() {
 		for rcvd := range s.events {
 			rcvdAt := time.Now()
 
+			s.backlog = append(s.backlog, backlogMessage{senderName: rcvd.Sender(), text: rcvd.Message(), timestamp: rcvd.ReceivedAt()})
+			if len(s.backlog) > s.conf.scrollback {
+				s.backlog = s.backlog[len(s.backlog)-s.conf.scrollback:]
+			}
+
 			switch event := rcvd.(type) {
 			case joinEvent:
 				s.addUser(event.user)
@@ -121,6 +126,7 @@ func (s *server) run() func() {
 			default:
 				s.logger.Println("Received invalid type on message channel")
 			}
+
 		}
 	}()
 
