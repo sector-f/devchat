@@ -53,7 +53,7 @@ func newServer(c config) (*server, error) {
 	return &s, nil
 }
 
-func (s *server) run() error {
+func (s *server) run() func() {
 	sshServer := ssh.Server{
 		Addr: fmt.Sprintf(":%d", s.conf.port),
 		Handler: func(sess ssh.Session) {
@@ -86,7 +86,21 @@ func (s *server) run() error {
 	)
 
 	s.logger.Printf("Starting server on port %v\n", s.conf.port)
-	return sshServer.ListenAndServe()
+
+	go func() {
+		sshServer.ListenAndServe()
+	}()
+
+	return func() {
+		s.logger.Println("Server is shutting down")
+		s.broadcast(systemUsername, "Server is shutting down")
+		sshServer.Close()
+
+		err := s.bans.save()
+		if err != nil {
+			s.logger.Printf("Error saving bans: %v", err)
+		}
+	}
 }
 
 func (s *server) broadcast(sender, msg string) {
