@@ -5,15 +5,16 @@ import (
 )
 
 var (
-	chalk   = gchalk.New(gchalk.ForceLevel(gchalk.LevelAnsi256))
-	green   = ansi256(1, 5, 1)
-	red     = ansi256(5, 1, 1)
-	cyan    = ansi256(1, 5, 5)
-	magenta = ansi256(5, 1, 5)
-	yellow  = ansi256(5, 5, 1)
-	orange  = ansi256(5, 3, 0)
-	blue    = ansi256(0, 3, 5)
-	white   = ansi256(5, 5, 5)
+	chalk     = gchalk.New(gchalk.ForceLevel(gchalk.LevelAnsi256))
+	green     = ansi256(1, 5, 1)
+	darkGreen = ansi256(1, 3, 1)
+	red       = ansi256(5, 1, 1)
+	cyan      = ansi256(1, 5, 5)
+	magenta   = ansi256(5, 1, 5)
+	yellow    = ansi256(5, 5, 1)
+	orange    = ansi256(5, 3, 0)
+	blue      = ansi256(0, 3, 5)
+	white     = ansi256(5, 5, 5)
 )
 
 // with r, g and b values from 0 to 5

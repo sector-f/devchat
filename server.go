@@ -125,6 +125,7 @@ func (s *server) broadcast(sender, msg string) {
 	for _, u := range s.users {
 		u.writeln(sender, msg, rcvTime.Format(time.Kitchen))
 		u.backlog = append(u.backlog, backlogMessage{timestamp: rcvTime, senderName: sender, text: msg})
+		u.render()
 	}
 
 	s.backlog = append(s.backlog, backlogMessage{rcvTime, sender, msg})

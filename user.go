@@ -36,9 +36,19 @@ type user struct {
 
 func (u *user) render() {
 	clearCMD("", u)
-	for _, msg := range u.backlog {
-		u.writeln(msg.senderName, msg.text, msg.timestamp.Format(time.Kitchen))
+
+	// TODO: this probably doesn't handle bells correctly
+	if len(u.backlog) > 0 {
+		for _, msg := range u.backlog[:len(u.backlog)] {
+			u.writeln(msg.senderName, msg.text, msg.timestamp.Format(time.Kitchen))
+		}
+
+		windowWidth := u.win.Width
+		if windowWidth > 0 {
+			u.term.Write([]byte(darkGreen.Paint(strings.Repeat("━", windowWidth)) + "\n"))
+		}
 	}
+
 	u.term.SetPrompt(u.name + ": ")
 }
 
@@ -84,19 +94,18 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		return nil, err
 	}
 
-	u.render()
-	go func() {
-		for u.win = range winChan {
-			u.render()
-		}
-	}()
-
 	if s.bans.contains(u.id) {
 		s.logger.Printf("Rejected %s [%s]\n", u.name, host)
 		u.writeln(systemUsername, "You are banned", "")
 		s.removeUserQuietly(u)
 		return nil, errors.New("user is banned")
 	}
+
+	go func() {
+		for u.win = range winChan {
+			u.render()
+		}
+	}()
 
 	// TOOD: maybe replace with leaky bucket?
 	/*
@@ -138,7 +147,9 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 // TODO: figure out which file this should be in
 func (s *server) repl(u *user) {
 	for {
+		u.render()
 		line, err := u.term.ReadLine()
+
 		switch err {
 		case io.EOF:
 			s.removeUser(u, u.name+" has left the chat")
