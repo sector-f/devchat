@@ -40,7 +40,7 @@ func (u *user) render() {
 	// TODO: this probably doesn't handle bells correctly
 	if len(u.backlog) > 0 {
 		for _, msg := range u.backlog[:len(u.backlog)] {
-			u.writeln(msg.senderName, msg.text, msg.timestamp.Format(time.Kitchen))
+			u.writeln(msg.senderName, msg.text, msg.timestamp.Format(timeFormat))
 		}
 
 		windowWidth := u.win.Width
@@ -140,24 +140,23 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		s.mainRoom.broadcast(systemUsername, u.name+" has joined the chat")
 	*/
 
-	s.broadcast(systemUsername, u.name+" has joined the chat")
+	s.events <- joinEvent{u.name}
 	return u, nil
 }
 
 // TODO: figure out which file this should be in
 func (s *server) repl(u *user) {
 	for {
-		u.render()
 		line, err := u.term.ReadLine()
 
 		switch err {
 		case io.EOF:
-			s.removeUser(u, u.name+" has left the chat")
+			s.removeUser(u, "quit")
 			return
 		case nil:
 			// Do nothing
 		default:
-			s.removeUser(u, u.name+" has left the chat due to an error: "+err.Error())
+			s.removeUser(u, "Error: "+err.Error())
 			return
 		}
 		line += "\n"
@@ -177,7 +176,7 @@ func (s *server) repl(u *user) {
 		}
 
 		// TODO: command handling goes here
-		s.broadcast(u.name, line)
+		s.events <- chatMsgEvent{u.name, line}
 	}
 }
 
@@ -197,6 +196,8 @@ func (u *user) writeln(sender, msg string, right string) {
 		} else {
 			u.term.Write([]byte(right + "\n"))
 		}
+	} else {
+		u.term.Write([]byte("\n"))
 	}
 }
 

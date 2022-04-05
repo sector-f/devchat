@@ -19,6 +19,7 @@ const (
 
 var (
 	systemUsername = green.Paint("SYSTEM")
+	timeFormat     = "15:04:05"
 )
 
 type server struct {
@@ -30,7 +31,8 @@ type server struct {
 	logger      *log.Logger
 	startupTime time.Time
 
-	mu sync.Mutex
+	mu     sync.Mutex
+	events chan interface{}
 }
 
 func newServer(c config) (*server, error) {
@@ -48,7 +50,8 @@ func newServer(c config) (*server, error) {
 		logger:      log.New(os.Stdout, "", log.Ldate|log.Ltime),
 		startupTime: time.Now(),
 
-		mu: sync.Mutex{},
+		mu:     sync.Mutex{},
+		events: make(chan interface{}),
 	}
 
 	return &s, nil
@@ -68,7 +71,7 @@ func (s *server) run() func() {
 
 			defer func() { // crash protection
 				if i := recover(); i != nil {
-					s.broadcast(systemUsername, "Recovered from panic: "+fmt.Sprint(i)+", stack: "+string(debug.Stack()))
+					s.events <- systemMsgEvent{"Recovered from panic: " + fmt.Sprint(i) + ", stack: " + string(debug.Stack())}
 				}
 			}()
 
@@ -92,10 +95,35 @@ func (s *server) run() func() {
 		sshServer.ListenAndServe()
 	}()
 
+	go func() {
+		for rcvd := range s.events {
+			switch event := rcvd.(type) {
+			case joinEvent:
+				s.broadcast(systemUsername, event.username+" has joined")
+			case partEvent:
+				msg := event.username + " has left"
+				if event.reason != "" {
+					msg += " (" + event.reason + ")"
+				}
+
+				s.broadcast(systemUsername, msg)
+			case chatMsgEvent:
+				s.broadcast(event.sender, event.msg)
+			case systemMsgEvent:
+				s.broadcast(systemUsername, event.msg)
+			case shutdownEvent:
+				sshServer.Close()
+				return
+			default:
+				s.logger.Println("Received invalid type on message channel")
+			}
+		}
+	}()
+
 	return func() {
 		s.logger.Println("Server is shutting down")
-		s.broadcast(systemUsername, "Server is shutting down")
-		sshServer.Close()
+		s.events <- systemMsgEvent{"Server is shutting down"}
+		s.events <- shutdownEvent{}
 
 		err := s.bans.save()
 		if err != nil {
@@ -126,7 +154,6 @@ func (s *server) broadcast(sender, msg string) {
 	msg = strings.Join(splitMsg, " ")
 
 	for _, u := range s.users {
-		u.writeln(sender, msg, rcvTime.Format(time.Kitchen))
 		u.backlog = append(u.backlog, backlogMessage{timestamp: rcvTime, senderName: sender, text: msg})
 		u.render()
 	}
@@ -144,8 +171,8 @@ func (s *server) addUser(u *user) {
 	s.users = append(s.users, u)
 }
 
-func (s *server) removeUser(u *user, msg string) {
-	s.broadcast(systemUsername, msg)
+func (s *server) removeUser(u *user, reason string) {
+	s.events <- partEvent{u.name, reason}
 	s.removeUserQuietly(u)
 }
 
