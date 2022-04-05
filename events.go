@@ -3,7 +3,8 @@ package main
 import "time"
 
 type event interface {
-	String() string
+	Sender() string
+	Message() string
 	ReceivedAt() time.Time
 }
 
@@ -12,7 +13,11 @@ type joinEvent struct {
 	rcvdAt time.Time
 }
 
-func (e joinEvent) String() string {
+func (e joinEvent) Sender() string {
+	return systemUsername
+}
+
+func (e joinEvent) Message() string {
 	return e.user.name + " has joined"
 }
 
@@ -26,7 +31,11 @@ type partEvent struct {
 	rcvdAt time.Time
 }
 
-func (e partEvent) String() string {
+func (e partEvent) Sender() string {
+	return systemUsername
+}
+
+func (e partEvent) Message() string {
 	msg := e.user.name + " has left"
 	if e.reason != "" {
 		msg += " (" + e.reason + ")"
@@ -45,8 +54,12 @@ type chatMsgEvent struct {
 	rcvdAt time.Time
 }
 
-func (e chatMsgEvent) String() string {
-	return e.sender + ": " + e.msg
+func (e chatMsgEvent) Sender() string {
+	return e.sender
+}
+
+func (e chatMsgEvent) Message() string {
+	return e.msg
 }
 
 func (e chatMsgEvent) ReceivedAt() time.Time {
@@ -58,7 +71,11 @@ type systemMsgEvent struct {
 	rcvdAt time.Time
 }
 
-func (e systemMsgEvent) String() string {
+func (e systemMsgEvent) Sender() string {
+	return systemUsername
+}
+
+func (e systemMsgEvent) Message() string {
 	return e.msg
 }
 
@@ -70,7 +87,11 @@ type shutdownEvent struct {
 	rcvdAt time.Time
 }
 
-func (e shutdownEvent) String() string {
+func (e shutdownEvent) Sender() string {
+	return systemUsername
+}
+
+func (e shutdownEvent) Message() string {
 	return "System is shutting down"
 }
 

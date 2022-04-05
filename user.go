@@ -115,27 +115,8 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 // TODO: figure out which file this should be in
 func (s *server) repl(u *user) {
 	go func() {
-		for rcvd := range u.events {
-			rcvdTime := time.Now()
-
-			switch event := rcvd.(type) {
-			case joinEvent:
-				u.backlog = append(u.backlog, backlogMessage{timestamp: rcvdTime, senderName: systemUsername, text: event.user.name + " has joined"})
-			case partEvent:
-				msg := event.user.name + " has left"
-				if event.reason != "" {
-					msg += " (" + event.reason + ")"
-				}
-
-				u.backlog = append(u.backlog, backlogMessage{timestamp: rcvdTime, senderName: systemUsername, text: msg})
-			case chatMsgEvent:
-				u.backlog = append(u.backlog, backlogMessage{timestamp: rcvdTime, senderName: event.sender, text: event.msg})
-			case systemMsgEvent:
-				u.backlog = append(u.backlog, backlogMessage{timestamp: rcvdTime, senderName: systemUsername, text: event.msg})
-			case shutdownEvent:
-			default:
-			}
-
+		for event := range u.events {
+			u.backlog = append(u.backlog, backlogMessage{senderName: event.Sender(), text: event.Message(), timestamp: event.ReceivedAt()})
 			u.render()
 		}
 	}()
