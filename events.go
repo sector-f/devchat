@@ -1,7 +1,7 @@
 package main
 
 type joinEvent struct {
-	username string
+	user *user
 }
 
 type partEvent struct {

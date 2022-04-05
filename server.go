@@ -75,7 +75,6 @@ func (s *server) run() func() {
 				}
 			}()
 
-			s.addUser(u)
 			s.repl(u)
 		},
 	}
@@ -99,7 +98,10 @@ func (s *server) run() func() {
 		for rcvd := range s.events {
 			switch event := rcvd.(type) {
 			case joinEvent:
-				s.broadcast(systemUsername, event.username+" has joined")
+				s.addUser(event.user)
+				for _, user := range s.users {
+					user.events <- joinEvent{event.user}
+				}
 			case partEvent:
 				msg := event.username + " has left"
 				if event.reason != "" {
@@ -154,8 +156,7 @@ func (s *server) broadcast(sender, msg string) {
 	msg = strings.Join(splitMsg, " ")
 
 	for _, u := range s.users {
-		u.backlog = append(u.backlog, backlogMessage{timestamp: rcvTime, senderName: sender, text: msg})
-		u.render()
+		u.events <- chatMsgEvent{sender: sender, msg: msg}
 	}
 
 	s.backlog = append(s.backlog, backlogMessage{rcvTime, sender, msg})

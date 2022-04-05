@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"math"
 	"net"
 	"strings"
 	"time"
@@ -24,6 +23,7 @@ type user struct {
 	term    *term.Terminal
 	win     ssh.Window
 	backlog []backlogMessage
+	events  chan interface{}
 
 	bell    bool
 	colorBG string
@@ -75,6 +75,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		term:    term,
 		win:     w,
 		backlog: s.backlog,
+		events:  make(chan interface{}),
 
 		bell:    true,
 		colorBG: "bg-off", // the FG will be set randomly
@@ -107,45 +108,40 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		}
 	}()
 
-	// TOOD: maybe replace with leaky bucket?
-	/*
-		idsInMinToTimes[u.id]++
-		time.AfterFunc(60*time.Second, func() {
-			idsInMinToTimes[u.id]--
-		})
-		if idsInMinToTimes[u.id] > 6 {
-			bans = append(bans, ban{u.addr, u.id})
-			mainRoom.broadcast(devbot, "`"+sess.User()+"` has been banned automatically. ID: "+u.id)
-			return nil
-		}
-	*/
-
-	/*
-		if len(s.backlog) > 0 {
-			for _, msg := range s.backlog {
-				u.writeln(msg.senderName, msg.text, msg.timestamp.Format(time.Kitchen))
-			}
-		}
-	*/
-
-	/*
-		switch len(s.mainRoom.users) - 1 {
-		case 0:
-			u.writeln("", blue.Paint("Welcome to the chat. There are no more users"))
-		case 1:
-			u.writeln("", yellow.Paint("Welcome to the chat. There is one more user"))
-		default:
-			u.writeln("", green.Paint("Welcome to the chat. There are", strconv.Itoa(len(s.mainRoom.users)-1), "more users"))
-		}
-		s.mainRoom.broadcast(systemUsername, u.name+" has joined the chat")
-	*/
-
-	s.events <- joinEvent{u.name}
+	s.events <- joinEvent{u}
 	return u, nil
 }
 
 // TODO: figure out which file this should be in
 func (s *server) repl(u *user) {
+	u.render()
+
+	go func() {
+		for rcvd := range u.events {
+			rcvdTime := time.Now()
+
+			switch event := rcvd.(type) {
+			case joinEvent:
+				u.backlog = append(u.backlog, backlogMessage{timestamp: rcvdTime, senderName: systemUsername, text: event.user.name + " has joined"})
+			case partEvent:
+				msg := event.username + " has left"
+				if event.reason != "" {
+					msg += " (" + event.reason + ")"
+				}
+
+				u.backlog = append(u.backlog, backlogMessage{timestamp: rcvdTime, senderName: systemUsername, text: msg})
+			case chatMsgEvent:
+				u.backlog = append(u.backlog, backlogMessage{timestamp: rcvdTime, senderName: event.sender, text: event.msg})
+			case systemMsgEvent:
+				u.backlog = append(u.backlog, backlogMessage{timestamp: rcvdTime, senderName: systemUsername, text: event.msg})
+			case shutdownEvent:
+			default:
+			}
+
+			u.render()
+		}
+	}()
+
 	for {
 		line, err := u.term.ReadLine()
 
@@ -159,7 +155,6 @@ func (s *server) repl(u *user) {
 			s.removeUser(u, "Error: "+err.Error())
 			return
 		}
-		line += "\n"
 
 		// Limit message length as early as possible
 		// TODO: see if splitting into multiple messages is possible (and a good idea)
@@ -168,8 +163,6 @@ func (s *server) repl(u *user) {
 		}
 
 		line = strings.TrimRightFunc(line, unicode.IsSpace)
-		u.term.SetPrompt(u.name + ": ")
-		u.term.Write([]byte(strings.Repeat("\033[A\033[2K", int(math.Ceil(float64(lenString(u.name+line)+2)/(float64(u.win.Width))))))) // basically, ceil(length of line divided by term width)
 
 		if line == "" {
 			continue
