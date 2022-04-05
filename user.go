@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -22,7 +23,7 @@ type user struct {
 	session ssh.Session
 	term    *term.Terminal
 	win     ssh.Window
-	backlog []backlogMessage
+	backlog []event
 	events  chan event
 
 	bell    bool
@@ -32,15 +33,20 @@ type user struct {
 
 	lastTimestamp time.Time
 	joinTime      time.Time
+
+	mu sync.Mutex
 }
 
 func (u *user) render() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
 	clearCMD("", u)
 
 	// TODO: this probably doesn't handle bells correctly
 	if len(u.backlog) > 0 {
-		for _, msg := range u.backlog[:len(u.backlog)] {
-			u.writeln(msg.senderName, msg.text, msg.timestamp.Format(timeFormat))
+		for _, msg := range u.backlog {
+			u.writeln(msg.Sender(), msg.Message(), msg.ReceivedAt().Format(timeFormat))
 		}
 
 		windowWidth := u.win.Width
@@ -116,7 +122,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 func (s *server) repl(u *user) {
 	go func() {
 		for event := range u.events {
-			u.backlog = append(u.backlog, backlogMessage{senderName: event.Sender(), text: event.Message(), timestamp: event.ReceivedAt()})
+			u.backlog = append(u.backlog, event)
 			u.render()
 		}
 	}()

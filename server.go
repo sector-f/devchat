@@ -23,7 +23,7 @@ var (
 type server struct {
 	conf    config
 	users   []*user
-	backlog []backlogMessage
+	backlog []event
 	bans    *banlist
 
 	logger      *log.Logger
@@ -42,7 +42,7 @@ func newServer(c config) (*server, error) {
 	s := server{
 		conf:    c,
 		users:   []*user{},
-		backlog: []backlogMessage{},
+		backlog: []event{},
 		bans:    bans,
 
 		logger:      log.New(os.Stdout, "", log.Ldate|log.Ltime),
@@ -96,7 +96,7 @@ func (s *server) run() func() {
 		for rcvd := range s.events {
 			rcvdAt := time.Now()
 
-			s.backlog = append(s.backlog, backlogMessage{senderName: rcvd.Sender(), text: rcvd.Message(), timestamp: rcvd.ReceivedAt()})
+			s.backlog = append(s.backlog, rcvd)
 			if len(s.backlog) > s.conf.scrollback {
 				s.backlog = s.backlog[len(s.backlog)-s.conf.scrollback:]
 			}
@@ -211,10 +211,4 @@ func (s *server) removeUserQuietly(u *user) {
 	s.users = s.users[:len(s.users)-1]
 
 	return
-}
-
-type backlogMessage struct {
-	timestamp  time.Time
-	senderName string
-	text       string
 }
