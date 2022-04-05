@@ -23,7 +23,7 @@ type user struct {
 	term    *term.Terminal
 	win     ssh.Window
 	backlog []backlogMessage
-	events  chan interface{}
+	events  chan event
 
 	bell    bool
 	colorBG string
@@ -75,7 +75,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		term:    term,
 		win:     w,
 		backlog: s.backlog,
-		events:  make(chan interface{}),
+		events:  make(chan event),
 
 		bell:    true,
 		colorBG: "bg-off", // the FG will be set randomly
@@ -114,8 +114,6 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 
 // TODO: figure out which file this should be in
 func (s *server) repl(u *user) {
-	u.render()
-
 	go func() {
 		for rcvd := range u.events {
 			rcvdTime := time.Now()

@@ -30,7 +30,7 @@ type server struct {
 	startupTime time.Time
 
 	mu     sync.Mutex
-	events chan interface{}
+	events chan event
 }
 
 func newServer(c config) (*server, error) {
@@ -49,7 +49,7 @@ func newServer(c config) (*server, error) {
 		startupTime: time.Now(),
 
 		mu:     sync.Mutex{},
-		events: make(chan interface{}),
+		events: make(chan event),
 	}
 
 	return &s, nil
