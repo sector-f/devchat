@@ -106,7 +106,8 @@ func (s *server) run() func() {
 
 			switch event := rcvd.(type) {
 			case joinEvent:
-				s.addUser(event.user)
+				s.users = append(s.users, event.user)
+
 				for _, user := range s.users {
 					user.events <- joinEvent{event.user, rcvdAt}
 				}
@@ -141,13 +142,6 @@ func (s *server) run() func() {
 			s.logger.Printf("Error saving bans: %v", err)
 		}
 	}
-}
-
-func (s *server) addUser(u *user) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.users = append(s.users, u)
 }
 
 func (s *server) removeUserQuietly(u *user) {
