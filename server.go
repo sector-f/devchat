@@ -123,7 +123,7 @@ func (s *server) broadcast(sender, msg string) {
 	msg = strings.Join(splitMsg, " ")
 
 	for _, u := range s.users {
-		s.writeln(u, sender, msg)
+		u.writeln(sender, msg, rcvTime.Format(time.Kitchen))
 	}
 
 	s.backlog = append(s.backlog, backlogMessage{rcvTime, sender, msg})
