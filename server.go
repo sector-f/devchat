@@ -69,7 +69,7 @@ func (s *server) run() func() {
 
 			defer func() { // crash protection
 				if i := recover(); i != nil {
-					s.events <- systemMsgEvent{"Recovered from panic: " + fmt.Sprint(i) + ", stack: " + string(debug.Stack())}
+					s.events <- systemMsgEvent{msg: "Recovered from panic: " + fmt.Sprint(i) + ", stack: " + string(debug.Stack())}
 				}
 			}()
 
@@ -94,24 +94,26 @@ func (s *server) run() func() {
 
 	go func() {
 		for rcvd := range s.events {
+			rcvdAt := time.Now()
+
 			switch event := rcvd.(type) {
 			case joinEvent:
 				s.addUser(event.user)
 				for _, user := range s.users {
-					user.events <- joinEvent{event.user}
+					user.events <- joinEvent{event.user, rcvdAt}
 				}
 			case partEvent:
 				s.removeUserQuietly(event.user)
 				for _, user := range s.users {
-					user.events <- partEvent{event.user, event.reason}
+					user.events <- partEvent{event.user, event.reason, rcvdAt}
 				}
 			case chatMsgEvent:
 				for _, user := range s.users {
-					user.events <- chatMsgEvent{event.sender, event.msg}
+					user.events <- chatMsgEvent{event.sender, event.msg, rcvdAt}
 				}
 			case systemMsgEvent:
 				for _, user := range s.users {
-					user.events <- systemMsgEvent{event.msg}
+					user.events <- systemMsgEvent{event.msg, rcvdAt}
 				}
 			case shutdownEvent:
 				sshServer.Close()
@@ -124,7 +126,7 @@ func (s *server) run() func() {
 
 	return func() {
 		s.logger.Println("Server is shutting down")
-		s.events <- systemMsgEvent{"Server is shutting down"}
+		s.events <- systemMsgEvent{msg: "Server is shutting down"}
 		s.events <- shutdownEvent{}
 
 		err := s.bans.save()

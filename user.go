@@ -108,7 +108,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		}
 	}()
 
-	s.events <- joinEvent{u}
+	s.events <- joinEvent{user: u}
 	return u, nil
 }
 
@@ -147,12 +147,12 @@ func (s *server) repl(u *user) {
 
 		switch err {
 		case io.EOF:
-			s.events <- partEvent{u, "quit"}
+			s.events <- partEvent{user: u, reason: "quit"}
 			return
 		case nil:
 			// Do nothing
 		default:
-			s.events <- partEvent{u, "Error: " + err.Error()}
+			s.events <- partEvent{user: u, reason: "Error: " + err.Error()}
 			return
 		}
 
@@ -169,7 +169,7 @@ func (s *server) repl(u *user) {
 		}
 
 		// TODO: command handling goes here
-		s.events <- chatMsgEvent{u.name, line}
+		s.events <- chatMsgEvent{sender: u.name, msg: line}
 	}
 }
 
