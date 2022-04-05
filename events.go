@@ -5,8 +5,8 @@ type joinEvent struct {
 }
 
 type partEvent struct {
-	username string
-	reason   string
+	user   *user
+	reason string
 }
 
 type chatMsgEvent struct {

@@ -5,11 +5,9 @@ import (
 	"log"
 	"os"
 	"runtime/debug"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/acarl005/stripansi"
 	"github.com/gliderlabs/ssh"
 )
 
@@ -103,16 +101,18 @@ func (s *server) run() func() {
 					user.events <- joinEvent{event.user}
 				}
 			case partEvent:
-				msg := event.username + " has left"
-				if event.reason != "" {
-					msg += " (" + event.reason + ")"
+				s.removeUserQuietly(event.user)
+				for _, user := range s.users {
+					user.events <- partEvent{event.user, event.reason}
 				}
-
-				s.broadcast(systemUsername, msg)
 			case chatMsgEvent:
-				s.broadcast(event.sender, event.msg)
+				for _, user := range s.users {
+					user.events <- chatMsgEvent{event.sender, event.msg}
+				}
 			case systemMsgEvent:
-				s.broadcast(systemUsername, event.msg)
+				for _, user := range s.users {
+					user.events <- systemMsgEvent{event.msg}
+				}
 			case shutdownEvent:
 				sshServer.Close()
 				return
@@ -134,6 +134,7 @@ func (s *server) run() func() {
 	}
 }
 
+/*
 func (s *server) broadcast(sender, msg string) {
 	if msg == "" {
 		return
@@ -164,17 +165,13 @@ func (s *server) broadcast(sender, msg string) {
 		s.backlog = s.backlog[len(s.backlog)-s.conf.scrollback:]
 	}
 }
+*/
 
 func (s *server) addUser(u *user) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.users = append(s.users, u)
-}
-
-func (s *server) removeUser(u *user, reason string) {
-	s.events <- partEvent{u.name, reason}
-	s.removeUserQuietly(u)
 }
 
 func (s *server) removeUserQuietly(u *user) {

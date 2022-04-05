@@ -124,7 +124,7 @@ func (s *server) repl(u *user) {
 			case joinEvent:
 				u.backlog = append(u.backlog, backlogMessage{timestamp: rcvdTime, senderName: systemUsername, text: event.user.name + " has joined"})
 			case partEvent:
-				msg := event.username + " has left"
+				msg := event.user.name + " has left"
 				if event.reason != "" {
 					msg += " (" + event.reason + ")"
 				}
@@ -147,12 +147,12 @@ func (s *server) repl(u *user) {
 
 		switch err {
 		case io.EOF:
-			s.removeUser(u, "quit")
+			s.events <- partEvent{u, "quit"}
 			return
 		case nil:
 			// Do nothing
 		default:
-			s.removeUser(u, "Error: "+err.Error())
+			s.events <- partEvent{u, "Error: " + err.Error()}
 			return
 		}
 
