@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/acarl005/stripansi"
 	"github.com/gliderlabs/ssh"
 )
 
@@ -44,7 +45,7 @@ func newServer(c config) (*server, error) {
 		backlog: []backlogMessage{},
 		bans:    bans,
 
-		logger:      log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile),
+		logger:      log.New(os.Stdout, "", log.Ldate|log.Ltime),
 		startupTime: time.Now(),
 
 		mu: sync.Mutex{},
@@ -112,6 +113,8 @@ func (s *server) broadcast(sender, msg string) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	s.logger.Println(stripansi.Strip(sender + ": " + msg))
 
 	splitMsg := strings.Split(msg, " ")
 	for i := range splitMsg {
