@@ -92,7 +92,7 @@ func (e shutdownEvent) Sender() string {
 }
 
 func (e shutdownEvent) Message() string {
-	return "System is shutting down"
+	return "Server is shutting down"
 }
 
 func (e shutdownEvent) ReceivedAt() time.Time {

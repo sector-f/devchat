@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/acarl005/stripansi"
 	"github.com/gliderlabs/ssh"
 )
 
@@ -96,6 +97,8 @@ func (s *server) run() func() {
 		for rcvd := range s.events {
 			rcvdAt := time.Now()
 
+			s.logger.Println(stripansi.Strip(rcvd.Sender() + ": " + rcvd.Message()))
+
 			s.backlog = append(s.backlog, rcvd)
 			if len(s.backlog) > s.conf.scrollback {
 				s.backlog = s.backlog[len(s.backlog)-s.conf.scrollback:]
@@ -131,8 +134,6 @@ func (s *server) run() func() {
 	}()
 
 	return func() {
-		s.logger.Println("Server is shutting down")
-		s.events <- systemMsgEvent{msg: "Server is shutting down"}
 		s.events <- shutdownEvent{}
 
 		err := s.bans.save()
@@ -141,39 +142,6 @@ func (s *server) run() func() {
 		}
 	}
 }
-
-/*
-func (s *server) broadcast(sender, msg string) {
-	if msg == "" {
-		return
-	}
-
-	rcvTime := time.Now()
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.logger.Println(stripansi.Strip(sender + ": " + msg))
-
-	splitMsg := strings.Split(msg, " ")
-	for i := range splitMsg {
-		word := splitMsg[i]
-		if word == "@everyone" {
-			splitMsg[i] = green.Paint("@everyone\a")
-		}
-	}
-	msg = strings.Join(splitMsg, " ")
-
-	for _, u := range s.users {
-		u.events <- chatMsgEvent{sender: sender, msg: msg}
-	}
-
-	s.backlog = append(s.backlog, backlogMessage{rcvTime, sender, msg})
-	if len(s.backlog) > s.conf.scrollback {
-		s.backlog = s.backlog[len(s.backlog)-s.conf.scrollback:]
-	}
-}
-*/
 
 func (s *server) addUser(u *user) {
 	s.mu.Lock()
