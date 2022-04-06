@@ -74,7 +74,7 @@ func (s *server) run() func() {
 				}
 			}()
 
-			s.repl(u)
+			repl(u, s.events)
 		},
 	}
 

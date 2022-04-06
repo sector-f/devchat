@@ -119,7 +119,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 }
 
 // TODO: figure out which file this should be in
-func (s *server) repl(u *user) {
+func repl(u *user, serverEvents chan event) {
 	go func() {
 		for event := range u.events {
 			u.backlog = append(u.backlog, event)
@@ -132,12 +132,12 @@ func (s *server) repl(u *user) {
 
 		switch err {
 		case io.EOF:
-			s.events <- partEvent{user: u, reason: "quit"}
+			serverEvents <- partEvent{user: u, reason: "quit"}
 			return
 		case nil:
 			// Do nothing
 		default:
-			s.events <- partEvent{user: u, reason: "Error: " + err.Error()}
+			serverEvents <- partEvent{user: u, reason: "Error: " + err.Error()}
 			return
 		}
 
@@ -154,7 +154,7 @@ func (s *server) repl(u *user) {
 		}
 
 		// TODO: command handling goes here
-		s.events <- chatMsgEvent{sender: u.name, msg: line}
+		serverEvents <- chatMsgEvent{sender: u.name, msg: line}
 	}
 }
 
