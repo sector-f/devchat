@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"runtime/debug"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/acarl005/stripansi"
@@ -30,8 +33,9 @@ type server struct {
 	logger      *log.Logger
 	startupTime time.Time
 
-	mu     sync.Mutex
-	events chan event
+	mu         sync.Mutex
+	events     chan event
+	isShutdown chan struct{} // Used to block until server is fully shut down
 }
 
 func newServer(c config) (*server, error) {
@@ -49,8 +53,9 @@ func newServer(c config) (*server, error) {
 		logger:      log.New(os.Stdout, "", log.Ldate|log.Ltime),
 		startupTime: time.Now(),
 
-		mu:     sync.Mutex{},
-		events: make(chan event),
+		mu:         sync.Mutex{},
+		events:     make(chan event),
+		isShutdown: make(chan struct{}),
 	}
 
 	return &s, nil
@@ -94,6 +99,10 @@ func (s *server) run() func() {
 	}()
 
 	go func() {
+		defer func() {
+			s.isShutdown <- struct{}{}
+		}()
+
 		for rcvd := range s.events {
 			rcvdAt := time.Now()
 
@@ -125,7 +134,29 @@ func (s *server) run() func() {
 					user.events <- systemMsgEvent{event.msg, rcvdAt}
 				}
 			case shutdownEvent:
+				c := make(chan os.Signal, 2)
+				signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+				go func() {
+					<-c
+					s.logger.Println("Caught signal again, shutting down immediately")
+					os.Exit(1)
+				}()
+
+				for _, user := range s.users {
+					user.events <- shutdownEvent{rcvdAt: rcvdAt}
+				}
+
+				ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+				sshServer.Shutdown(ctx)
+
+				<-ctx.Done()
 				sshServer.Close()
+
+				err := s.bans.save()
+				if err != nil {
+					s.logger.Printf("Error saving bans: %v", err)
+				}
+
 				return
 			default:
 				s.logger.Println("Received invalid type on message channel")
@@ -136,11 +167,7 @@ func (s *server) run() func() {
 
 	return func() {
 		s.events <- shutdownEvent{}
-
-		err := s.bans.save()
-		if err != nil {
-			s.logger.Printf("Error saving bans: %v", err)
-		}
+		<-s.isShutdown
 	}
 }
 
