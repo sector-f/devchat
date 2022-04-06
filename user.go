@@ -92,8 +92,6 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		joinTime:      now,
 	}
 
-	clearCMD("", u) // always clear the screen on connect
-
 	err := s.setUsername(u, sess.User())
 	if err != nil {
 		u.writeln(systemUsername, "Error setting name: "+err.Error(), "")
@@ -107,6 +105,8 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		s.removeUserQuietly(u)
 		return nil, errors.New("user is banned")
 	}
+
+	clearCMD("", u) // always clear the screen on connect
 
 	go func() {
 		for u.win = range winChan {
