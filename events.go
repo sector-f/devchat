@@ -58,6 +58,17 @@ func (e systemMsgEvent) Message() string       { return e.msg }
 func (e systemMsgEvent) ReceivedAt() time.Time { return e.rcvdAt }
 func (e systemMsgEvent) ShouldLog() bool       { return true }
 
+type systemWhisperMsgEvent struct {
+	receiver *user
+	msg      string
+	rcvdAt   time.Time
+}
+
+func (e systemWhisperMsgEvent) Sender() string        { return red.Paint("SYSTEM") }
+func (e systemWhisperMsgEvent) Message() string       { return e.msg }
+func (e systemWhisperMsgEvent) ReceivedAt() time.Time { return e.rcvdAt }
+func (e systemWhisperMsgEvent) ShouldLog() bool       { return false }
+
 type shutdownEvent struct {
 	rcvdAt time.Time
 }

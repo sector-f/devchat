@@ -122,6 +122,8 @@ func (s *server) run() func() {
 				for _, user := range s.users {
 					user.events <- joinEvent{event.user, rcvdAt}
 				}
+
+				event.user.events <- systemWhisperMsgEvent{msg: "Welcome to the server!", rcvdAt: rcvdAt}
 			case partEvent:
 				s.removeUserQuietly(event.user)
 				for _, user := range s.users {
@@ -135,6 +137,8 @@ func (s *server) run() func() {
 				for _, user := range s.users {
 					user.events <- systemMsgEvent{event.msg, rcvdAt}
 				}
+			case systemWhisperMsgEvent:
+				event.receiver.events <- systemWhisperMsgEvent{msg: event.msg, rcvdAt: rcvdAt}
 			case shutdownEvent:
 				c := make(chan os.Signal, 2)
 				signal.Notify(c, os.Interrupt, syscall.SIGTERM)
