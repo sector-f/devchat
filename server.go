@@ -39,7 +39,7 @@ type server struct {
 }
 
 func newServer(c config) (*server, error) {
-	bans, err := banlistFromFile(c.banFilename)
+	bans, err := banlistFromFile(c.BanFilename)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func newServer(c config) (*server, error) {
 
 func (s *server) run() func() {
 	sshServer := ssh.Server{
-		Addr: fmt.Sprintf(":%d", s.conf.port),
+		Addr: fmt.Sprintf(":%d", s.conf.Port),
 		Handler: func(sess ssh.Session) {
 			s.logger.Printf("User %s [%s] connecting from %v\n", sess.User(), shasum(string(sess.PublicKey().Marshal()))[:8], formatAddr(sess.RemoteAddr()))
 
@@ -83,7 +83,7 @@ func (s *server) run() func() {
 		},
 	}
 
-	sshServer.SetOption(ssh.HostKeyFile(s.conf.keyFilename))
+	sshServer.SetOption(ssh.HostKeyFile(s.conf.KeyFilename))
 	sshServer.SetOption(
 		ssh.PublicKeyAuth(
 			func(ctx ssh.Context, key ssh.PublicKey) bool {
@@ -92,7 +92,7 @@ func (s *server) run() func() {
 		),
 	)
 
-	s.logger.Printf("Starting server on port %v\n", s.conf.port)
+	s.logger.Printf("Starting server on port %v\n", s.conf.Port)
 
 	go func() {
 		sshServer.ListenAndServe()
@@ -109,8 +109,8 @@ func (s *server) run() func() {
 			s.logger.Println(stripansi.Strip(rcvd.Sender() + ": " + rcvd.Message()))
 
 			s.backlog = append(s.backlog, rcvd)
-			if len(s.backlog) > s.conf.scrollback {
-				s.backlog = s.backlog[len(s.backlog)-s.conf.scrollback:]
+			if len(s.backlog) > s.conf.Scrollback {
+				s.backlog = s.backlog[len(s.backlog)-s.conf.Scrollback:]
 			}
 
 			switch event := rcvd.(type) {

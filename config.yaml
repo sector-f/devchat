@@ -1,0 +1,4 @@
+port: 2222
+scrollback: 20
+ban_filename: "./bans.json"
+key_filename: "./id_rsa"
