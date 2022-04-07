@@ -98,3 +98,12 @@ func (e shutdownEvent) Message() string {
 func (e shutdownEvent) ReceivedAt() time.Time {
 	return e.rcvdAt
 }
+
+// Does nothing; used to trigger a re-render for user
+type noOpEvent struct {
+	user *user
+}
+
+func (e noOpEvent) Sender() string        { return "" }
+func (e noOpEvent) Message() string       { return "" }
+func (e noOpEvent) ReceivedAt() time.Time { return time.Time{} }

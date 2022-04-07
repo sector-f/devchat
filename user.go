@@ -154,7 +154,7 @@ func repl(u *user, serverEvents chan event) {
 		}
 
 		// TODO: command handling goes here
-		serverEvents <- chatMsgEvent{sender: u.name, msg: line}
+		u.parseCommand(line, serverEvents)
 	}
 }
 

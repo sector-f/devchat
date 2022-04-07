@@ -158,6 +158,8 @@ func (s *server) run() func() {
 				}
 
 				return
+			case noOpEvent:
+				event.user.render()
 			default:
 				s.logger.Println("Received invalid type on message channel")
 			}
