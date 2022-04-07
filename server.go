@@ -133,6 +133,24 @@ func (s *server) run() func() {
 				for _, user := range s.users {
 					user.events <- chatMsgEvent{event.sender, event.msg, rcvdAt}
 				}
+			case whisperMsgEvent:
+				var rcvUser *user
+				rcvrExists := false
+				for _, user := range s.users {
+					if user.name == event.receiver {
+						rcvUser = user
+						rcvrExists = true
+						break
+					}
+				}
+
+				if !rcvrExists {
+					event.sender.events <- systemWhisperMsgEvent{msg: "User does not exist", rcvdAt: rcvdAt}
+					continue
+				}
+
+				event.sender.events <- whisperMsgEvent{sender: event.sender, receiver: event.receiver, msg: event.msg, rcvdAt: rcvdAt}
+				rcvUser.events <- whisperMsgEvent{sender: event.sender, receiver: event.receiver, msg: event.msg, rcvdAt: rcvdAt}
 			case systemMsgEvent:
 				for _, user := range s.users {
 					user.events <- systemMsgEvent{event.msg, rcvdAt}

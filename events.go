@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type event interface {
 	Sender() string
@@ -47,6 +50,20 @@ func (e chatMsgEvent) Sender() string        { return e.sender }
 func (e chatMsgEvent) Message() string       { return e.msg }
 func (e chatMsgEvent) ReceivedAt() time.Time { return e.rcvdAt }
 func (e chatMsgEvent) ShouldLog() bool       { return true }
+
+type whisperMsgEvent struct {
+	sender   *user
+	receiver string
+	msg      string
+	rcvdAt   time.Time
+}
+
+func (e whisperMsgEvent) Sender() string {
+	return red.Paint(fmt.Sprintf("%s (to %s)", e.sender.name, e.receiver))
+}
+func (e whisperMsgEvent) Message() string       { return e.msg }
+func (e whisperMsgEvent) ReceivedAt() time.Time { return e.rcvdAt }
+func (e whisperMsgEvent) ShouldLog() bool       { return false }
 
 type systemMsgEvent struct {
 	msg    string
