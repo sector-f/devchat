@@ -134,6 +134,11 @@ func (s *server) run() func() {
 					user.events <- chatMsgEvent{event.sender, event.msg, rcvdAt}
 				}
 			case whisperMsgEvent:
+				if event.sender.name == event.receiver {
+					event.sender.events <- systemWhisperMsgEvent{msg: "whisper: you cannot message yourself", rcvdAt: rcvdAt}
+					continue
+				}
+
 				var rcvUser *user
 				rcvrExists := false
 				for _, user := range s.users {
@@ -145,7 +150,7 @@ func (s *server) run() func() {
 				}
 
 				if !rcvrExists {
-					event.sender.events <- systemWhisperMsgEvent{msg: "User does not exist", rcvdAt: rcvdAt}
+					event.sender.events <- systemWhisperMsgEvent{msg: "whisper: user does not exist", rcvdAt: rcvdAt}
 					continue
 				}
 
@@ -170,7 +175,7 @@ func (s *server) run() func() {
 					user.events <- shutdownEvent{rcvdAt: rcvdAt}
 				}
 
-				ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+				ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
 				sshServer.Shutdown(ctx)
 
 				<-ctx.Done()
