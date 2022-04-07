@@ -122,8 +122,6 @@ func (s *server) run() func() {
 				for _, user := range s.users {
 					user.events <- joinEvent{event.user, rcvdAt}
 				}
-
-				event.user.events <- systemWhisperMsgEvent{msg: "Welcome to the server!", rcvdAt: rcvdAt}
 			case partEvent:
 				s.removeUserQuietly(event.user)
 				for _, user := range s.users {
