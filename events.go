@@ -14,21 +14,10 @@ type joinEvent struct {
 	rcvdAt time.Time
 }
 
-func (e joinEvent) Sender() string {
-	return systemUsername
-}
-
-func (e joinEvent) Message() string {
-	return e.user.name + " has joined"
-}
-
-func (e joinEvent) ReceivedAt() time.Time {
-	return e.rcvdAt
-}
-
-func (e joinEvent) ShouldLog() bool {
-	return true
-}
+func (e joinEvent) Sender() string        { return systemUsername }
+func (e joinEvent) Message() string       { return e.user.name + " has joined" }
+func (e joinEvent) ReceivedAt() time.Time { return e.rcvdAt }
+func (e joinEvent) ShouldLog() bool       { return true }
 
 type partEvent struct {
 	user   *user
@@ -36,10 +25,7 @@ type partEvent struct {
 	rcvdAt time.Time
 }
 
-func (e partEvent) Sender() string {
-	return systemUsername
-}
-
+func (e partEvent) Sender() string { return systemUsername }
 func (e partEvent) Message() string {
 	msg := e.user.name + " has left"
 	if e.reason != "" {
@@ -48,14 +34,8 @@ func (e partEvent) Message() string {
 
 	return msg
 }
-
-func (e partEvent) ReceivedAt() time.Time {
-	return e.rcvdAt
-}
-
-func (e partEvent) ShouldLog() bool {
-	return true
-}
+func (e partEvent) ReceivedAt() time.Time { return e.rcvdAt }
+func (e partEvent) ShouldLog() bool       { return true }
 
 type chatMsgEvent struct {
 	sender string
@@ -63,62 +43,29 @@ type chatMsgEvent struct {
 	rcvdAt time.Time
 }
 
-func (e chatMsgEvent) Sender() string {
-	return e.sender
-}
-
-func (e chatMsgEvent) Message() string {
-	return e.msg
-}
-
-func (e chatMsgEvent) ReceivedAt() time.Time {
-	return e.rcvdAt
-}
-
-func (e chatMsgEvent) ShouldLog() bool {
-	return true
-}
+func (e chatMsgEvent) Sender() string        { return e.sender }
+func (e chatMsgEvent) Message() string       { return e.msg }
+func (e chatMsgEvent) ReceivedAt() time.Time { return e.rcvdAt }
+func (e chatMsgEvent) ShouldLog() bool       { return true }
 
 type systemMsgEvent struct {
 	msg    string
 	rcvdAt time.Time
 }
 
-func (e systemMsgEvent) Sender() string {
-	return systemUsername
-}
-
-func (e systemMsgEvent) Message() string {
-	return e.msg
-}
-
-func (e systemMsgEvent) ReceivedAt() time.Time {
-	return e.rcvdAt
-}
-
-func (e systemMsgEvent) ShouldLog() bool {
-	return true
-}
+func (e systemMsgEvent) Sender() string        { return systemUsername }
+func (e systemMsgEvent) Message() string       { return e.msg }
+func (e systemMsgEvent) ReceivedAt() time.Time { return e.rcvdAt }
+func (e systemMsgEvent) ShouldLog() bool       { return true }
 
 type shutdownEvent struct {
 	rcvdAt time.Time
 }
 
-func (e shutdownEvent) Sender() string {
-	return systemUsername
-}
-
-func (e shutdownEvent) Message() string {
-	return "Server is shutting down"
-}
-
-func (e shutdownEvent) ReceivedAt() time.Time {
-	return e.rcvdAt
-}
-
-func (e shutdownEvent) ShouldLog() bool {
-	return true
-}
+func (e shutdownEvent) Sender() string        { return systemUsername }
+func (e shutdownEvent) Message() string       { return "Server is shutting down" }
+func (e shutdownEvent) ReceivedAt() time.Time { return e.rcvdAt }
+func (e shutdownEvent) ShouldLog() bool       { return true }
 
 // Does nothing; used to trigger a re-render for user
 type noOpEvent struct {
