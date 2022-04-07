@@ -106,11 +106,13 @@ func (s *server) run() func() {
 		for rcvd := range s.events {
 			rcvdAt := time.Now()
 
-			s.logger.Println(stripansi.Strip(rcvd.Sender() + ": " + rcvd.Message()))
+			if rcvd.ShouldLog() {
+				s.logger.Println(stripansi.Strip(rcvd.Sender() + ": " + rcvd.Message()))
 
-			s.backlog = append(s.backlog, rcvd)
-			if len(s.backlog) > s.conf.Scrollback {
-				s.backlog = s.backlog[len(s.backlog)-s.conf.Scrollback:]
+				s.backlog = append(s.backlog, rcvd)
+				if len(s.backlog) > s.conf.Scrollback {
+					s.backlog = s.backlog[len(s.backlog)-s.conf.Scrollback:]
+				}
 			}
 
 			switch event := rcvd.(type) {

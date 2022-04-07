@@ -6,6 +6,7 @@ type event interface {
 	Sender() string
 	Message() string
 	ReceivedAt() time.Time
+	ShouldLog() bool // Specify whether the server should log events of this type
 }
 
 type joinEvent struct {
@@ -23,6 +24,10 @@ func (e joinEvent) Message() string {
 
 func (e joinEvent) ReceivedAt() time.Time {
 	return e.rcvdAt
+}
+
+func (e joinEvent) ShouldLog() bool {
+	return true
 }
 
 type partEvent struct {
@@ -48,6 +53,10 @@ func (e partEvent) ReceivedAt() time.Time {
 	return e.rcvdAt
 }
 
+func (e partEvent) ShouldLog() bool {
+	return true
+}
+
 type chatMsgEvent struct {
 	sender string
 	msg    string
@@ -64,6 +73,10 @@ func (e chatMsgEvent) Message() string {
 
 func (e chatMsgEvent) ReceivedAt() time.Time {
 	return e.rcvdAt
+}
+
+func (e chatMsgEvent) ShouldLog() bool {
+	return true
 }
 
 type systemMsgEvent struct {
@@ -83,6 +96,10 @@ func (e systemMsgEvent) ReceivedAt() time.Time {
 	return e.rcvdAt
 }
 
+func (e systemMsgEvent) ShouldLog() bool {
+	return true
+}
+
 type shutdownEvent struct {
 	rcvdAt time.Time
 }
@@ -99,6 +116,10 @@ func (e shutdownEvent) ReceivedAt() time.Time {
 	return e.rcvdAt
 }
 
+func (e shutdownEvent) ShouldLog() bool {
+	return true
+}
+
 // Does nothing; used to trigger a re-render for user
 type noOpEvent struct {
 	user *user
@@ -107,3 +128,4 @@ type noOpEvent struct {
 func (e noOpEvent) Sender() string        { return "" }
 func (e noOpEvent) Message() string       { return "" }
 func (e noOpEvent) ReceivedAt() time.Time { return time.Time{} }
+func (e noOpEvent) ShouldLog() bool       { return false }
