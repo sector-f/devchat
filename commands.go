@@ -28,7 +28,15 @@ func (u *user) parseCommand(input string, events chan event) {
 			events <- whisperMsgEvent{sender: u, receiver: args[1], msg: strings.Join(args[2:], " ")}
 		}
 	default:
-		events <- noOpEvent{u}
+		// Trim leading slash character from "//command" and send "/command" as a normal message
+		if len(args[0]) >= 2 {
+			if args[0][1] == '/' {
+				events <- chatMsgEvent{sender: u.name, msg: strings.Join(args, " ")[1:]} //
+				return
+			}
+		}
+
+		events <- noOpEvent{u} // Trigger a re-render so that the /command doesn't stay on the prompt
 	}
 }
 
