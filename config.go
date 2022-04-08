@@ -7,18 +7,20 @@ import (
 )
 
 type config struct {
-	Port        int    `yaml:"port"`
-	Scrollback  int    `yaml:"scrollback"`
-	BanFilename string `yaml:"ban_filename"`
-	KeyFilename string `yaml:"key_filename"`
+	Port          int    `yaml:"port"`
+	Scrollback    int    `yaml:"scrollback"`
+	BanFilename   string `yaml:"ban_filename"`
+	KeyFilename   string `yaml:"key_filename"`
+	UsersFilename string `yaml:"users_filename"`
 }
 
 func defaultConfig() config {
 	c := config{
-		Port:        2222,
-		Scrollback:  16,
-		BanFilename: "bans.json",
-		KeyFilename: "id_rsa",
+		Port:          2222,
+		Scrollback:    16,
+		BanFilename:   "bans.json",
+		KeyFilename:   "id_rsa",
+		UsersFilename: "users.json",
 	}
 
 	return c

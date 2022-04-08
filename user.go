@@ -70,11 +70,33 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		return nil, errors.New("public key was nil")
 	}
 
+	var (
+		name      string
+		nameFound bool
+	)
+	for _, entry := range s.allowedUsers {
+		entryKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(entry.Key))
+		if err != nil {
+			continue
+		}
+
+		if ssh.KeysEqual(entryKey, pubkey) {
+			name = entry.Name
+			nameFound = true
+			break
+		}
+	}
+
+	// This should never happen
+	if !nameFound {
+		return nil, errors.New("user not found in list of allowed users")
+	}
+
 	toHash := string(pubkey.Marshal())
 
 	now := time.Now()
 	u := &user{
-		name:     "",
+		name:     name,
 		pronouns: []string{"unset"},
 
 		session: sess,
@@ -90,13 +112,6 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 
 		lastTimestamp: now,
 		joinTime:      now,
-	}
-
-	err := s.setUsername(u, sess.User())
-	if err != nil {
-		u.writeln(systemUsername, "Error setting name: "+err.Error(), "")
-		sess.Close()
-		return nil, err
 	}
 
 	if s.bans.contains(u.id) {

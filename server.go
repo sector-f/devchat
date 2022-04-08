@@ -28,7 +28,9 @@ type server struct {
 	conf    config
 	users   []*user
 	backlog []event
-	bans    *banlist
+
+	bans         *banlist
+	allowedUsers userList
 
 	logger      *log.Logger
 	startupTime time.Time
@@ -44,11 +46,18 @@ func newServer(c config) (*server, error) {
 		return nil, err
 	}
 
+	ul, err := userListFromFile(c.UsersFilename)
+	if err != nil {
+		return nil, err
+	}
+
 	s := server{
 		conf:    c,
 		users:   []*user{},
 		backlog: []event{},
-		bans:    bans,
+
+		bans:         bans,
+		allowedUsers: ul,
 
 		logger:      log.New(os.Stdout, "", log.Ldate|log.Ltime),
 		startupTime: time.Now(),
@@ -87,7 +96,18 @@ func (s *server) run() func() {
 	sshServer.SetOption(
 		ssh.PublicKeyAuth(
 			func(ctx ssh.Context, key ssh.PublicKey) bool {
-				return true // allow all keys, this lets us hash pubkeys later
+				for _, entry := range s.allowedUsers {
+					userKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(entry.Key))
+					if err != nil {
+						continue
+					}
+
+					if ssh.KeysEqual(key, userKey) {
+						return true
+					}
+				}
+
+				return false
 			},
 		),
 	)
