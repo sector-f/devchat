@@ -114,7 +114,7 @@ func newUser(s *server, sess ssh.Session) (*user, error) {
 		}
 	}()
 
-	s.events <- joinEvent{user: u}
+	s.events <- &joinEvent{user: u}
 	return u, nil
 }
 
@@ -132,12 +132,12 @@ func repl(u *user, serverEvents chan event) {
 
 		switch err {
 		case io.EOF:
-			serverEvents <- partEvent{user: u, reason: "quit"}
+			serverEvents <- &partEvent{user: u, reason: "quit"}
 			return
 		case nil:
 			// Do nothing
 		default:
-			serverEvents <- partEvent{user: u, reason: "Error: " + err.Error()}
+			serverEvents <- &partEvent{user: u, reason: "Error: " + err.Error()}
 			return
 		}
 

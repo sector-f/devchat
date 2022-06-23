@@ -75,7 +75,7 @@ func (s *server) run() func() {
 
 			defer func() { // crash protection
 				if i := recover(); i != nil {
-					s.events <- systemMsgEvent{msg: "Recovered from panic: " + fmt.Sprint(i) + ", stack: " + string(debug.Stack())}
+					s.events <- &systemMsgEvent{msg: "Recovered from panic: " + fmt.Sprint(i) + ", stack: " + string(debug.Stack())}
 				}
 			}()
 
@@ -105,6 +105,7 @@ func (s *server) run() func() {
 
 		for rcvd := range s.events {
 			rcvdAt := time.Now()
+			rcvd.SetReceivedAt(rcvdAt)
 
 			if rcvd.ShouldLog() {
 				s.logger.Println(stripansi.Strip(rcvd.Sender() + ": " + rcvd.Message()))
@@ -116,24 +117,24 @@ func (s *server) run() func() {
 			}
 
 			switch event := rcvd.(type) {
-			case joinEvent:
+			case *joinEvent:
 				s.users = append(s.users, event.user)
 
 				for _, user := range s.users {
-					user.events <- joinEvent{event.user, rcvdAt}
+					user.events <- &joinEvent{event.user, rcvdAt}
 				}
-			case partEvent:
+			case *partEvent:
 				s.removeUserQuietly(event.user)
 				for _, user := range s.users {
-					user.events <- partEvent{event.user, event.reason, rcvdAt}
+					user.events <- &partEvent{event.user, event.reason, rcvdAt}
 				}
-			case chatMsgEvent:
+			case *chatMsgEvent:
 				for _, user := range s.users {
-					user.events <- chatMsgEvent{event.sender, event.msg, rcvdAt}
+					user.events <- &chatMsgEvent{event.sender, event.msg, rcvdAt}
 				}
-			case whisperMsgEvent:
+			case *whisperMsgEvent:
 				if event.sender.name == event.receiver {
-					event.sender.events <- systemWhisperMsgEvent{msg: "whisper: you cannot message yourself", rcvdAt: rcvdAt}
+					event.sender.events <- &systemWhisperMsgEvent{msg: "whisper: you cannot message yourself", rcvdAt: rcvdAt}
 					continue
 				}
 
@@ -148,19 +149,19 @@ func (s *server) run() func() {
 				}
 
 				if !rcvrExists {
-					event.sender.events <- systemWhisperMsgEvent{msg: "whisper: user does not exist", rcvdAt: rcvdAt}
+					event.sender.events <- &systemWhisperMsgEvent{msg: "whisper: user does not exist", rcvdAt: rcvdAt}
 					continue
 				}
 
-				event.sender.events <- whisperMsgEvent{sender: event.sender, receiver: event.receiver, msg: event.msg, rcvdAt: rcvdAt}
-				rcvUser.events <- whisperMsgEvent{sender: event.sender, receiver: event.receiver, msg: event.msg, rcvdAt: rcvdAt}
-			case systemMsgEvent:
+				event.sender.events <- &whisperMsgEvent{sender: event.sender, receiver: event.receiver, msg: event.msg, rcvdAt: rcvdAt}
+				rcvUser.events <- &whisperMsgEvent{sender: event.sender, receiver: event.receiver, msg: event.msg, rcvdAt: rcvdAt}
+			case *systemMsgEvent:
 				for _, user := range s.users {
-					user.events <- systemMsgEvent{event.msg, rcvdAt}
+					user.events <- &systemMsgEvent{event.msg, rcvdAt}
 				}
-			case systemWhisperMsgEvent:
-				event.receiver.events <- systemWhisperMsgEvent{msg: event.msg, rcvdAt: rcvdAt}
-			case shutdownEvent:
+			case *systemWhisperMsgEvent:
+				event.receiver.events <- &systemWhisperMsgEvent{msg: event.msg, rcvdAt: rcvdAt}
+			case *shutdownEvent:
 				c := make(chan os.Signal, 2)
 				signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 				go func() {
@@ -170,7 +171,7 @@ func (s *server) run() func() {
 				}()
 
 				for _, user := range s.users {
-					user.events <- shutdownEvent{rcvdAt: rcvdAt}
+					user.events <- &shutdownEvent{rcvdAt: rcvdAt}
 				}
 
 				ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
@@ -195,7 +196,7 @@ func (s *server) run() func() {
 	}()
 
 	return func() {
-		s.events <- shutdownEvent{}
+		s.events <- &shutdownEvent{}
 		<-s.isShutdown
 	}
 }
